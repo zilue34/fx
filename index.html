@@ -437,12 +437,9 @@
         }
 
         /* Sidebar & Status Messages */
-        .sidebar {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-            height: fit-content;
+        .control-panel { /* This class is already defined above, but adding sidebar here for clarity if needed */
+            /* ... existing styles ... */
+            height: fit-content; /* Ensure it wraps content */
         }
 
         .status-message {
@@ -678,24 +675,7 @@
                     📥 下載修改後PDF
                 </button>
 
-                <div style="margin-top: 20px; padding: 15px; background: rgba(102, 126, 234, 0.05); border-radius: 10px; border-left: 4px solid #667eea;">
-                    <h4 style="color: #667eea; margin-bottom: 10px;">💡 使用技巧</h4>
-                    <div style="font-size: 12px; color: #666; line-height: 1.5;">
-                        <strong>圖片批量處理：</strong><br>
-                        • 上傳圖片後，拖拽列表項目調整圖片順序。<br>
-                        • 「自動分配」會將隊列中的圖片按順序分配給PDF的每一頁。<br><br>
-                        
-                        <strong>PDF生成問題：</strong><br>
-                        • 確保圖片格式正確 (JPG/PNG)<br>
-                        • 避免使用過大的圖片檔案<br>
-                        • 嘗試重新上傳問題圖片<br><br>
-                        
-                        <strong>最佳效果建議：</strong><br>
-                        • 確保圖片尺寸與預設位置框接近，以獲得最佳顯示效果。<br>
-                        • 在充足光線下進行掃描 (如果後續需要掃描功能)。
-                    </div>
                 </div>
-            </div>
         </div>
     </div>
 
@@ -714,9 +694,8 @@
                 this.pageAssignments = {};
                 this.currentStep = 1;
 
-                // For drag-and-drop auto-scrolling
                 this.dragOverTimer = null;
-                this.scrollSpeed = 5; // Pixels per interval
+                this.scrollSpeed = 5;
 
                 this.initializeEventListeners();
                 this.setupDragAndDrop();
@@ -755,7 +734,6 @@
                     this.downloadModifiedPDF();
                 });
 
-                // Add click listener for image queue items for selection
                 document.getElementById('imageQueue').addEventListener('click', (e) => {
                     const itemElement = e.target.closest('.image-item');
                     if (itemElement) {
@@ -791,13 +769,10 @@
             }
 
             selectImageItem(itemElement) {
-                // Remove 'selected' class from all other items
                 document.querySelectorAll('.image-item').forEach(item => {
                     item.classList.remove('selected');
                 });
-                // Add 'selected' class to the clicked item
                 itemElement.classList.add('selected');
-                // You could also store the selected index or image data in this.selectedImage = this.images[index];
             }
 
             async loadPDF(file) {
@@ -1038,7 +1013,7 @@
                 }
 
                 this.updateImageQueue();
-                this.updateStep(4); /* Step 4 is now '自動分配' */
+                this.updateStep(4);
                 this.updateButtons();
                 this.showLoading(false);
                 
@@ -1097,9 +1072,9 @@
                 });
             }
 
-            // `detectTextContent` is no longer directly used for QR generation,
-            // but keeping it as it might be a remnant or intended for future use.
             detectTextContent(text) {
+                // This function is no longer used after removing QR generation,
+                // but keeping it as a placeholder if future text parsing is needed.
                 const patterns = [
                     /^\s*\*+\s*([^:：,\n]+?)\s*[:：]\s*((?:https?|ftp):\/\/[^\s\n]+)/gm,
                     /^([^,\n]+?)\s*,\s*((?:https?|ftp):\/\/[^\s\n]+)/gm
@@ -1127,7 +1102,7 @@
                                 detectedItems.push({ content: content, label: label });
                                 processedUrls.add(content);
                             } catch (e) {
-                                console.warn(`跳過無效的網址格式: 標籤='${label}', 內容='${content}'`);
+                                console.warn(`Skipping invalid URL format: label='${label}', content='${content}'`);
                             }
                         }
                     }
@@ -1236,29 +1211,26 @@
                     item.addEventListener('dragstart', (e) => {
                         e.dataTransfer.setData('text/plain', index);
                         item.classList.add('dragging');
-                        this.selectedImageItem = item; // Store the dragging element
+                        this.selectedImageItem = item;
                         e.dataTransfer.effectAllowed = 'move';
                     });
 
                     item.addEventListener('dragend', () => {
                         item.classList.remove('dragging');
                         this.selectedImageItem = null;
-                        // Clean up all drag-over indicators
                         document.querySelectorAll('.image-item.drag-over-above, .image-item.drag-over-below').forEach(el => {
                             el.classList.remove('drag-over-above', 'drag-over-below');
                         });
-                        clearInterval(this.dragOverTimer); // Stop auto-scrolling
+                        clearInterval(this.dragOverTimer);
                     });
 
                     item.addEventListener('dragenter', (e) => {
                         e.preventDefault();
-                        if (item === this.selectedImageItem) return; // Don't highlight self
+                        if (item === this.selectedImageItem) return;
                         
-                        // Determine if dropping above or below
                         const rect = item.getBoundingClientRect();
                         const midY = rect.top + rect.height / 2;
                         
-                        // Clear existing indicators
                         document.querySelectorAll('.image-item.drag-over-above, .image-item.drag-over-below').forEach(el => {
                             el.classList.remove('drag-over-above', 'drag-over-below');
                         });
@@ -1276,57 +1248,49 @@
                     
                     item.addEventListener('dragover', (e) => {
                         e.preventDefault();
-                        e.dataTransfer.dropEffect = 'move'; // Visual feedback for drop target
+                        e.dataTransfer.dropEffect = 'move';
 
-                        // Auto-scrolling logic
                         const queueRect = queue.getBoundingClientRect();
                         const mouseY = e.clientY;
 
-                        clearInterval(this.dragOverTimer); // Clear previous timer
+                        clearInterval(this.dragOverTimer);
 
-                        if (mouseY < queueRect.top + 30) { // Near top
+                        if (mouseY < queueRect.top + 30) {
                             this.dragOverTimer = setInterval(() => {
                                 queue.scrollTop -= this.scrollSpeed;
                             }, 20);
-                        } else if (mouseY > queueRect.bottom - 30) { // Near bottom
+                        } else if (mouseY > queueRect.bottom - 30) {
                             this.dragOverTimer = setInterval(() => {
                                 queue.scrollTop += this.scrollSpeed;
                             }, 20);
                         } else {
-                            clearInterval(this.dragOverTimer); // Stop scrolling if in middle
+                            clearInterval(this.dragOverTimer);
                         }
                     });
 
                     item.addEventListener('drop', (e) => {
                         e.preventDefault();
-                        clearInterval(this.dragOverTimer); // Stop auto-scrolling
+                        clearInterval(this.dragOverTimer);
                         
                         const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
                         const targetIndex = parseInt(item.dataset.index);
 
-                        // Determine final drop index based on mouse position
                         const rect = item.getBoundingClientRect();
                         const midY = rect.top + rect.height / 2;
                         let finalIndex = targetIndex;
 
                         if (e.clientY > midY && draggedIndex < targetIndex) {
-                            // Dropped below current item, and dragged item was before target
                             finalIndex = targetIndex;
                         } else if (e.clientY < midY && draggedIndex > targetIndex) {
-                             // Dropped above current item, and dragged item was after target
                             finalIndex = targetIndex;
                         } else if (e.clientY > midY && draggedIndex > targetIndex) {
-                            // Dropped below current item, and dragged item was after target
                             finalIndex = targetIndex + 1;
                         } else if (e.clientY < midY && draggedIndex < targetIndex) {
-                            // Dropped above current item, and dragged item was before target
                             finalIndex = targetIndex;
                         } else {
-                            // Dropped on itself or in an ambiguous spot, treat as on target
                             finalIndex = targetIndex;
                         }
 
-                        // Remove drag-over classes immediately
                         document.querySelectorAll('.image-item.drag-over-above, .image-item.drag-over-below').forEach(el => {
                             el.classList.remove('drag-over-above', 'drag-over-below');
                         });

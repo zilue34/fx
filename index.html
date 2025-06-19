@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF QR Code 批量編輯器</title>
+    <title>PDF 圖片批量編輯器</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
+        /* General Reset & Body Styles */
         * {
             margin: 0;
             padding: 0;
@@ -29,6 +28,7 @@
             padding: 20px;
         }
 
+        /* Header Styles */
         .header {
             text-align: center;
             margin-bottom: 30px;
@@ -47,6 +47,7 @@
             -webkit-text-fill-color: transparent;
         }
 
+        /* Workflow Steps */
         .workflow-steps {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -84,6 +85,7 @@
             opacity: 0.8;
         }
 
+        /* Main Controls Layout */
         .controls {
             display: grid;
             grid-template-columns: 300px 1fr 350px;
@@ -107,6 +109,7 @@
             padding-bottom: 8px;
         }
 
+        /* File Input Styles */
         .file-input-wrapper {
             position: relative;
             overflow: hidden;
@@ -137,6 +140,7 @@
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
 
+        /* Button Styles */
         .btn {
             padding: 12px 24px;
             border: none;
@@ -180,6 +184,7 @@
             transform: none;
         }
 
+        /* Input Field Styles */
         .input-field {
             width: 100%;
             padding: 12px;
@@ -195,6 +200,7 @@
             border-color: #667eea;
         }
 
+        /* PDF Viewer Styles */
         .pdf-container {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
@@ -220,6 +226,7 @@
             height: auto;
         }
 
+        /* Position Marker */
         .position-marker {
             position: absolute;
             border: 3px dashed #667eea;
@@ -252,6 +259,7 @@
             cursor: default;
         }
 
+        /* Image Preview on PDF */
         .image-preview {
             position: absolute;
             border: 2px solid #00b894;
@@ -267,6 +275,7 @@
             object-fit: contain;
         }
 
+        /* Image Queue Styles */
         .image-queue {
             max-height: 300px;
             overflow-y: auto;
@@ -280,11 +289,23 @@
             align-items: center;
             padding: 10px;
             border-bottom: 1px solid #e9ecef;
-            transition: background 0.3s ease;
+            transition: background 0.3s ease, border-left 0.3s ease;
+            position: relative; /* Needed for absolute positioning of controls */
+        }
+
+        .image-item:last-child {
+            border-bottom: none;
         }
 
         .image-item:hover {
             background: rgba(102, 126, 234, 0.1);
+        }
+
+        /* New: Active/Selected state for image items */
+        .image-item.selected {
+            background: rgba(102, 126, 234, 0.2) !important;
+            border: 1px solid #667eea;
+            box-shadow: 0 0 8px rgba(102, 126, 234, 0.5);
         }
 
         .image-item.assigned {
@@ -292,7 +313,7 @@
             border-left: 4px solid #00b894;
         }
 
-        .image-item.batch-generated {
+        .image-item.batch-generated { /* Kept for compatibility if old QR images exist */
             border-left: 4px solid #667eea;
             background: rgba(102, 126, 234, 0.05);
         }
@@ -300,6 +321,19 @@
         .image-item.dragging {
             opacity: 0.5;
             transform: rotate(2deg);
+            cursor: grabbing;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* New: Drag over indicator for dropping */
+        .image-item.drag-over-above {
+            border-top: 2px solid #667eea;
+            padding-top: 8px; /* Add space for the indicator */
+        }
+
+        .image-item.drag-over-below {
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px; /* Add space for the indicator */
         }
 
         .image-item-controls {
@@ -310,7 +344,8 @@
             gap: 3px;
         }
 
-        .image-item:hover .image-item-controls {
+        .image-item:hover .image-item-controls,
+        .image-item.selected .image-item-controls { /* Show controls when selected too */
             display: flex;
         }
 
@@ -346,7 +381,7 @@
             transform: scale(1.1);
         }
 
-        .drop-zone {
+        .drop-zone { /* Consider if this is still needed, as drag-over is on .image-item now */
             border: 2px dashed #ccc;
             border-radius: 8px;
             padding: 10px;
@@ -383,6 +418,7 @@
             margin-top: 2px;
         }
 
+        /* Page Navigation */
         .page-navigation {
             text-align: center;
             margin: 20px 0;
@@ -400,6 +436,7 @@
             font-weight: 500;
         }
 
+        /* Sidebar & Status Messages */
         .sidebar {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
@@ -407,25 +444,6 @@
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
             height: fit-content;
         }
-
-        /* Removed QR scanner specific styles */
-        /*
-        .qr-scanner {
-            margin-top: 20px;
-            padding: 15px;
-            border: 2px dashed #667eea;
-            border-radius: 10px;
-            text-align: center;
-            background: rgba(102, 126, 234, 0.05);
-        }
-
-        .scanner-video {
-            width: 100%;
-            max-width: 300px;
-            border-radius: 10px;
-            margin: 10px 0;
-        }
-        */
 
         .status-message {
             padding: 10px;
@@ -459,6 +477,7 @@
             border: 1px solid #ffeaa7;
         }
 
+        /* Loading Spinner */
         .loading {
             display: none;
             text-align: center;
@@ -484,6 +503,7 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* Resize Handle for Position Marker */
         .resize-handle {
             position: absolute;
             bottom: -10px;
@@ -497,6 +517,7 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
 
+        /* Batch Progress Bar */
         .batch-progress {
             margin: 15px 0;
             padding: 15px;
@@ -521,6 +542,7 @@
             border-radius: 10px;
         }
 
+        /* Assignment Summary */
         .assignment-summary {
             margin: 15px 0;
             padding: 15px;
@@ -529,6 +551,7 @@
             border-left: 4px solid #00b894;
         }
 
+        /* Responsive Adjustments */
         @media (max-width: 1200px) {
             .controls {
                 grid-template-columns: 1fr;
@@ -545,8 +568,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📄 PDF QR Code 智能編輯器</h1>
-            <p>在第一頁設定位置，支援智能偵測文字批量生成QR Code並自動分配到所有頁面</p>
+            <h1>📄 PDF 圖片批量編輯器</h1>
+            <p>在第一頁設定位置，批量上傳圖片並自動分配到所有頁面</p>
             
             <div class="workflow-steps">
                 <div class="step active" id="step1">
@@ -558,8 +581,8 @@
                     <p>在第一頁拖拽定位框</p>
                 </div>
                 <div class="step" id="step3">
-                    <h4>3️⃣ 生成圖片</h4>
-                    <p>手動生成或智能批量偵測</p>
+                    <h4>3️⃣ 上傳圖片</h4>
+                    <p>批量上傳要插入的圖片</p>
                 </div>
                 <div class="step" id="step4">
                     <h4>4️⃣ 自動分配</h4>
@@ -658,10 +681,9 @@
                 <div style="margin-top: 20px; padding: 15px; background: rgba(102, 126, 234, 0.05); border-radius: 10px; border-left: 4px solid #667eea;">
                     <h4 style="color: #667eea; margin-bottom: 10px;">💡 使用技巧</h4>
                     <div style="font-size: 12px; color: #666; line-height: 1.5;">
-                        <strong>智能批量生成圖片：</strong><br>
-                        • 支援「標籤: 網址」格式 (例如：** 專案: https://example.com)<br>
-                        • 支援「標籤,網址」格式 (例如：項目01,https://example.com)<br>
-                        • 自動偵測並生成對應的QR Code<br><br>
+                        <strong>圖片批量處理：</strong><br>
+                        • 上傳圖片後，拖拽列表項目調整圖片順序。<br>
+                        • 「自動分配」會將隊列中的圖片按順序分配給PDF的每一頁。<br><br>
                         
                         <strong>PDF生成問題：</strong><br>
                         • 確保圖片格式正確 (JPG/PNG)<br>
@@ -669,9 +691,8 @@
                         • 嘗試重新上傳問題圖片<br><br>
                         
                         <strong>最佳效果建議：</strong><br>
-                        • 使用高對比度的QR Code<br>
-                        • 確保QR Code大小適中<br>
-                        • 在充足光線下進行掃描
+                        • 確保圖片尺寸與預設位置框接近，以獲得最佳顯示效果。<br>
+                        • 在充足光線下進行掃描 (如果後續需要掃描功能)。
                     </div>
                 </div>
             </div>
@@ -679,7 +700,6 @@
     </div>
 
     <script>
-        // 設置 PDF.js worker
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         class PDFBatchEditor {
@@ -691,26 +711,26 @@
                 this.images = [];
                 this.positionLocked = false;
                 this.fixedPosition = { x: 50, y: 50, width: 100, height: 100 };
-                this.pageAssignments = {}; // 記錄每頁分配的圖片
-                this.scannerStream = null; // This can be removed if scanner is fully gone
+                this.pageAssignments = {};
                 this.currentStep = 1;
-                
+
+                // For drag-and-drop auto-scrolling
+                this.dragOverTimer = null;
+                this.scrollSpeed = 5; // Pixels per interval
+
                 this.initializeEventListeners();
                 this.setupDragAndDrop();
             }
 
             initializeEventListeners() {
-                // PDF 文件上傳
                 document.getElementById('pdfFile').addEventListener('change', (e) => {
                     this.loadPDF(e.target.files[0]);
                 });
 
-                // 批量圖片上傳
                 document.getElementById('imageFiles').addEventListener('change', (e) => {
                     this.loadImages(e.target.files);
                 });
 
-                // 頁面導航
                 document.getElementById('prevPage').addEventListener('click', () => {
                     this.goToPage(this.currentPage - 1);
                 });
@@ -719,39 +739,33 @@
                     this.goToPage(this.currentPage + 1);
                 });
 
-                // 鎖定位置
                 document.getElementById('lockPosition').addEventListener('click', () => {
                     this.lockPosition();
                 });
 
-                // 自動分配圖片
                 document.getElementById('autoAssign').addEventListener('click', () => {
                     this.autoAssignImages();
                 });
 
-                // 預覽所有頁面
                 document.getElementById('previewAll').addEventListener('click', () => {
                     this.previewAllPages();
                 });
 
-                // 下載 PDF
                 document.getElementById('downloadPDF').addEventListener('click', () => {
                     this.downloadModifiedPDF();
                 });
 
-                // Removed QR Code scanner event listeners
-                // document.getElementById('scanQRCode').addEventListener('click', () => {
-                //     this.startQRScanner();
-                // });
-                // document.getElementById('stopScanner').addEventListener('click', () => {
-                //     this.stopQRScanner();
-                // });
+                // Add click listener for image queue items for selection
+                document.getElementById('imageQueue').addEventListener('click', (e) => {
+                    const itemElement = e.target.closest('.image-item');
+                    if (itemElement) {
+                        this.selectImageItem(itemElement);
+                    }
+                });
             }
 
             setupDragAndDrop() {
                 const pdfContainer = document.getElementById('pdfViewer');
-                
-                // 拖拽上傳 PDF
                 pdfContainer.addEventListener('dragover', (e) => {
                     e.preventDefault();
                     pdfContainer.style.background = 'rgba(102, 126, 234, 0.1)';
@@ -774,6 +788,16 @@
                         }
                     }
                 });
+            }
+
+            selectImageItem(itemElement) {
+                // Remove 'selected' class from all other items
+                document.querySelectorAll('.image-item').forEach(item => {
+                    item.classList.remove('selected');
+                });
+                // Add 'selected' class to the clicked item
+                itemElement.classList.add('selected');
+                // You could also store the selected index or image data in this.selectedImage = this.images[index];
             }
 
             async loadPDF(file) {
@@ -824,19 +848,16 @@
 
                 await page.render(renderContext).promise;
 
-                // 創建頁面容器
                 const pageContainer = document.createElement('div');
                 pageContainer.className = 'pdf-page';
                 pageContainer.style.width = `${viewport.width}px`;
                 pageContainer.style.height = `${viewport.height}px`;
                 pageContainer.appendChild(canvas);
 
-                // 清空並添加到查看器
                 const viewer = document.getElementById('pdfViewer');
                 viewer.innerHTML = '';
                 viewer.appendChild(pageContainer);
 
-                // 如果已鎖定位置，顯示該頁面的圖片預覽
                 if (this.positionLocked && this.pageAssignments[pageNum]) {
                     this.showImagePreview(pageContainer, this.pageAssignments[pageNum]);
                 }
@@ -850,7 +871,6 @@
                 const pageContainer = document.querySelector('.pdf-page');
                 if (!pageContainer) return;
 
-                // 移除現有的位置標記
                 const existingMarker = pageContainer.querySelector('.position-marker');
                 if (existingMarker) {
                     existingMarker.remove();
@@ -867,14 +887,12 @@
                 `;
                 marker.innerHTML = '📍<br>拖拽定位<br>調整大小';
 
-                // 添加調整大小控制點
                 const resizeHandle = document.createElement('div');
                 resizeHandle.className = 'resize-handle';
                 marker.appendChild(resizeHandle);
 
                 pageContainer.appendChild(marker);
 
-                // 添加拖拽和調整大小功能
                 this.makeDraggable(marker);
                 this.makeResizable(marker, resizeHandle);
             }
@@ -887,29 +905,22 @@
 
                 element.addEventListener('mousedown', (e) => {
                     if (e.target.classList.contains('resize-handle')) return;
-                    
                     isDragging = true;
                     startX = e.clientX;
                     startY = e.clientY;
                     initialX = element.offsetLeft;
                     initialY = element.offsetTop;
-                    
                     e.preventDefault();
                 });
 
                 document.addEventListener('mousemove', (e) => {
                     if (!isDragging || this.positionLocked) return;
-                    
                     const deltaX = e.clientX - startX;
                     const deltaY = e.clientY - startY;
-                    
                     const newX = Math.max(0, initialX + deltaX);
                     const newY = Math.max(0, initialY + deltaY);
-                    
                     element.style.left = `${newX}px`;
                     element.style.top = `${newY}px`;
-                    
-                    // 更新固定位置
                     this.fixedPosition.x = newX;
                     this.fixedPosition.y = newY;
                 });
@@ -937,14 +948,10 @@
 
                 document.addEventListener('mousemove', (e) => {
                     if (!isResizing || this.positionLocked) return;
-                    
                     const width = Math.max(50, startWidth + e.clientX - startX);
                     const height = Math.max(50, startHeight + e.clientY - startY);
-                    
                     element.style.width = `${width}px`;
                     element.style.height = `${height}px`;
-                    
-                    // 更新固定位置大小
                     this.fixedPosition.width = width;
                     this.fixedPosition.height = height;
                 });
@@ -961,8 +968,6 @@
                 }
 
                 this.positionLocked = true;
-                
-                // 更新位置標記樣式
                 const marker = document.querySelector('.position-marker');
                 if (marker) {
                     marker.classList.add('locked');
@@ -978,18 +983,15 @@
                 this.showLoading(true);
                 let loadedCount = 0;
                 let failedCount = 0;
-                const maxFileSize = 10 * 1024 * 1024; // 10MB 限制
+                const maxFileSize = 10 * 1024 * 1024;
 
                 for (const file of files) {
                     try {
-                        // 檢查文件大小
                         if (file.size > maxFileSize) {
                             console.warn(`圖片 ${file.name} 超過大小限制 (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
                             failedCount++;
                             continue;
                         }
-
-                        // 檢查文件類型
                         if (!file.type.startsWith('image/')) {
                             console.warn(`文件 ${file.name} 不是圖片格式`);
                             failedCount++;
@@ -1001,10 +1003,8 @@
                         
                         await new Promise((resolve, reject) => {
                             img.onload = () => {
-                                // 檢查圖片尺寸
                                 if (img.width > 4000 || img.height > 4000) {
-                                    console.warn(`圖片 ${file.name} 尺寸過大 (${img.width}x${img.height})`);
-                                    // 創建縮小版本
+                                    console.warn(`圖片 ${file.name} 尺寸過大 (${img.width}x${img.height})，嘗試優化...`);
                                     this.resizeImage(img, file.name).then(resizedData => {
                                         this.images.push(resizedData);
                                         loadedCount++;
@@ -1038,7 +1038,7 @@
                 }
 
                 this.updateImageQueue();
-                this.updateStep(4);
+                this.updateStep(4); /* Step 4 is now '自動分配' */
                 this.updateButtons();
                 this.showLoading(false);
                 
@@ -1051,6 +1051,8 @@
                     this.showStatus('pdfStatus', message, 'success');
                 } else if (failedCount > 0) {
                     this.showStatus('pdfStatus', `❌ 所有圖片載入失敗 (${failedCount} 張)`, 'error');
+                } else {
+                    this.showStatus('pdfStatus', 'ℹ️ 未載入任何圖片，請檢查文件', 'info');
                 }
             }
 
@@ -1059,7 +1061,6 @@
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     
-                    // 計算新尺寸，保持比例
                     const maxSize = 2000;
                     let { width, height } = img;
                     
@@ -1077,11 +1078,8 @@
                     
                     canvas.width = width;
                     canvas.height = height;
-                    
-                    // 繪製縮小的圖片
                     ctx.drawImage(img, 0, 0, width, height);
                     
-                    // 轉換為優化的格式
                     const resizedUrl = canvas.toDataURL('image/jpeg', 0.85);
                     
                     const resizedImg = new Image();
@@ -1099,16 +1097,16 @@
                 });
             }
 
+            // `detectTextContent` is no longer directly used for QR generation,
+            // but keeping it as it might be a remnant or intended for future use.
             detectTextContent(text) {
-                // This function is still useful if you plan to reintroduce QR code generation later,
-                // or for other text-based features. Keeping it for now.
                 const patterns = [
                     /^\s*\*+\s*([^:：,\n]+?)\s*[:：]\s*((?:https?|ftp):\/\/[^\s\n]+)/gm,
                     /^([^,\n]+?)\s*,\s*((?:https?|ftp):\/\/[^\s\n]+)/gm
                 ];
                 
                 const detectedItems = [];
-                const processedUrls = new Set(); 
+                const processedUrls = new Set();
 
                 for (const pattern of patterns) {
                     pattern.lastIndex = 0;
@@ -1128,7 +1126,6 @@
                                 new URL(content); 
                                 detectedItems.push({ content: content, label: label });
                                 processedUrls.add(content);
-                                console.log(`偵測到項目: 標籤='${label}', 內容='${content}'`);
                             } catch (e) {
                                 console.warn(`跳過無效的網址格式: 標籤='${label}', 內容='${content}'`);
                             }
@@ -1141,10 +1138,8 @@
                     if(headerLike) {
                         const index = detectedItems.indexOf(headerLike);
                         detectedItems.splice(index, 1);
-                        console.log("已過濾表頭 '名稱,連結'");
                     }
                 }
-
                 return detectedItems;
             }
 
@@ -1164,9 +1159,9 @@
                     const item = document.createElement('div');
                     let itemClass = 'image-item';
                     if (image.assigned) itemClass += ' assigned';
-                    if (image.batchGenerated) itemClass += ' batch-generated';
+                    if (image.batchGenerated) itemClass += ' batch-generated'; // Still useful if old QR images remain
                     item.className = itemClass;
-                    item.style.position = 'relative';
+                    item.dataset.index = index; // Store index for drag-drop
                     item.draggable = true;
 
                     const img = document.createElement('img');
@@ -1184,17 +1179,8 @@
                     
                     if (image.assigned) {
                         status.textContent = `已分配到第 ${image.assignedPage} 頁`;
-                    } else if (image.type === 'qr') {
-                        // This branch will likely not be hit if QR generation is removed
-                        if (image.batchGenerated && image.originalLabel) {
-                            status.innerHTML = `
-                                <div style="font-size: 11px; color: #667eea;">🔍 智能偵測</div>
-                                <div style="font-size: 10px;">標籤: ${image.originalLabel}</div>
-                                <div style="font-size: 10px; word-break: break-all;">內容: ${image.qrText.substring(0, 30)}${image.qrText.length > 30 ? '...' : ''}</div>
-                            `;
-                        } else {
-                            status.textContent = `QR: ${image.qrText}`;
-                        }
+                    } else if (image.type === 'qr') { // For any existing QR images
+                        status.textContent = `QR: ${image.qrText}`;
                     } else {
                         status.textContent = '等待分配';
                         if (image.optimized) {
@@ -1202,7 +1188,7 @@
                         }
                     }
 
-                    // 控制按鈕
+                    // Controls buttons
                     const controls = document.createElement('div');
                     controls.className = 'image-item-controls';
                     
@@ -1246,26 +1232,107 @@
                     item.appendChild(info);
                     item.appendChild(controls);
 
-                    // 拖拽事件
+                    // Drag and Drop Events
                     item.addEventListener('dragstart', (e) => {
                         e.dataTransfer.setData('text/plain', index);
                         item.classList.add('dragging');
+                        this.selectedImageItem = item; // Store the dragging element
+                        e.dataTransfer.effectAllowed = 'move';
                     });
 
                     item.addEventListener('dragend', () => {
                         item.classList.remove('dragging');
+                        this.selectedImageItem = null;
+                        // Clean up all drag-over indicators
+                        document.querySelectorAll('.image-item.drag-over-above, .image-item.drag-over-below').forEach(el => {
+                            el.classList.remove('drag-over-above', 'drag-over-below');
+                        });
+                        clearInterval(this.dragOverTimer); // Stop auto-scrolling
                     });
 
+                    item.addEventListener('dragenter', (e) => {
+                        e.preventDefault();
+                        if (item === this.selectedImageItem) return; // Don't highlight self
+                        
+                        // Determine if dropping above or below
+                        const rect = item.getBoundingClientRect();
+                        const midY = rect.top + rect.height / 2;
+                        
+                        // Clear existing indicators
+                        document.querySelectorAll('.image-item.drag-over-above, .image-item.drag-over-below').forEach(el => {
+                            el.classList.remove('drag-over-above', 'drag-over-below');
+                        });
+
+                        if (e.clientY < midY) {
+                            item.classList.add('drag-over-above');
+                        } else {
+                            item.classList.add('drag-over-below');
+                        }
+                    });
+
+                    item.addEventListener('dragleave', () => {
+                        item.classList.remove('drag-over-above', 'drag-over-below');
+                    });
+                    
                     item.addEventListener('dragover', (e) => {
                         e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move'; // Visual feedback for drop target
+
+                        // Auto-scrolling logic
+                        const queueRect = queue.getBoundingClientRect();
+                        const mouseY = e.clientY;
+
+                        clearInterval(this.dragOverTimer); // Clear previous timer
+
+                        if (mouseY < queueRect.top + 30) { // Near top
+                            this.dragOverTimer = setInterval(() => {
+                                queue.scrollTop -= this.scrollSpeed;
+                            }, 20);
+                        } else if (mouseY > queueRect.bottom - 30) { // Near bottom
+                            this.dragOverTimer = setInterval(() => {
+                                queue.scrollTop += this.scrollSpeed;
+                            }, 20);
+                        } else {
+                            clearInterval(this.dragOverTimer); // Stop scrolling if in middle
+                        }
                     });
 
                     item.addEventListener('drop', (e) => {
                         e.preventDefault();
+                        clearInterval(this.dragOverTimer); // Stop auto-scrolling
+                        
                         const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                        const targetIndex = index;
-                        if (draggedIndex !== targetIndex) {
-                            this.reorderImages(draggedIndex, targetIndex);
+                        const targetIndex = parseInt(item.dataset.index);
+
+                        // Determine final drop index based on mouse position
+                        const rect = item.getBoundingClientRect();
+                        const midY = rect.top + rect.height / 2;
+                        let finalIndex = targetIndex;
+
+                        if (e.clientY > midY && draggedIndex < targetIndex) {
+                            // Dropped below current item, and dragged item was before target
+                            finalIndex = targetIndex;
+                        } else if (e.clientY < midY && draggedIndex > targetIndex) {
+                             // Dropped above current item, and dragged item was after target
+                            finalIndex = targetIndex;
+                        } else if (e.clientY > midY && draggedIndex > targetIndex) {
+                            // Dropped below current item, and dragged item was after target
+                            finalIndex = targetIndex + 1;
+                        } else if (e.clientY < midY && draggedIndex < targetIndex) {
+                            // Dropped above current item, and dragged item was before target
+                            finalIndex = targetIndex;
+                        } else {
+                            // Dropped on itself or in an ambiguous spot, treat as on target
+                            finalIndex = targetIndex;
+                        }
+
+                        // Remove drag-over classes immediately
+                        document.querySelectorAll('.image-item.drag-over-above, .image-item.drag-over-below').forEach(el => {
+                            el.classList.remove('drag-over-above', 'drag-over-below');
+                        });
+
+                        if (draggedIndex !== finalIndex) {
+                            this.reorderImages(draggedIndex, finalIndex);
                         }
                     });
 
@@ -1294,8 +1361,8 @@
             }
 
             reorderImages(fromIndex, toIndex) {
-                const item = this.images.splice(fromIndex, 1)[0];
-                this.images.splice(toIndex, 0, item);
+                const [movedItem] = this.images.splice(fromIndex, 1);
+                this.images.splice(toIndex, 0, movedItem);
                 this.updateImageQueue();
                 this.showStatus('pdfStatus', '📋 圖片順序已重新排列', 'info');
             }
@@ -1325,7 +1392,7 @@
                 const imageInfo = this.images.map((img, index) => ({
                     序號: index + 1,
                     名稱: img.name,
-                    類型: img.type === 'qr' ? 'QR Code' : '圖片', // Keep this for existing QR images
+                    類型: img.type === 'qr' ? 'QR Code' : '圖片',
                     內容: img.qrText || '圖片檔案',
                     狀態: img.assigned ? `已分配到第${img.assignedPage}頁` : '未分配'
                 }));
@@ -1355,14 +1422,12 @@
                     return;
                 }
 
-                // 清除之前的分配
                 this.pageAssignments = {};
                 this.images.forEach(img => {
                     img.assigned = false;
                     delete img.assignedPage;
                 });
 
-                // 按順序分配圖片到頁面
                 let imageIndex = 0;
                 for (let page = 1; page <= this.totalPages && imageIndex < this.images.length; page++) {
                     this.pageAssignments[page] = this.images[imageIndex];
@@ -1376,7 +1441,6 @@
                 this.updateStep(5);
                 this.updateButtons();
 
-                // 重新渲染當前頁面以顯示圖片預覽
                 this.renderPage(this.currentPage);
 
                 this.showStatus('pdfStatus', `✅ 成功分配 ${imageIndex} 張圖片到 ${Math.min(this.totalPages, this.images.length)} 頁`, 'success');
@@ -1405,7 +1469,6 @@
             }
 
             showImagePreview(pageContainer, imageData) {
-                // 移除現有預覽
                 const existingPreview = pageContainer.querySelector('.image-preview');
                 if (existingPreview) {
                     existingPreview.remove();
@@ -1448,7 +1511,7 @@
                         progressText.textContent = `正在預覽第 ${page} 頁...`;
                         
                         await this.goToPage(page);
-                        await new Promise(resolve => setTimeout(resolve, 500)); // 給用戶看到預覽效果
+                        await new Promise(resolve => setTimeout(resolve, 500));
                     }
                     
                     progressText.textContent = '預覽完成！';
@@ -1498,7 +1561,6 @@
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF('p', 'pt', 'a4');
                 
-                // 先移除初始頁面
                 pdf.deletePage(1);
                 
                 for (let pageNum = 1; pageNum <= this.totalPages; pageNum++) {
@@ -1507,12 +1569,10 @@
                     progressText.textContent = `處理第 ${pageNum} 頁...`;
                     
                     try {
-                        // 添加新頁面
                         pdf.addPage();
                         
-                        // 渲染PDF頁面到canvas
                         const page = await this.pdfDoc.getPage(pageNum);
-                        const scale = 2; // 提高解析度
+                        const scale = 2;
                         const viewport = page.getViewport({ scale });
                         
                         const canvas = document.createElement('canvas');
@@ -1525,20 +1585,16 @@
                             viewport: viewport
                         }).promise;
                         
-                        // 轉換為圖片並添加到PDF
                         const imgData = canvas.toDataURL('image/jpeg', 0.8);
                         
-                        // 計算適合的尺寸
                         const pdfWidth = pdf.internal.pageSize.getWidth();
                         const pdfHeight = pdf.internal.pageSize.getHeight();
                         const ratio = Math.min(pdfWidth / canvas.width, pdfHeight / canvas.height);
                         const imgWidth = canvas.width * ratio;
                         const imgHeight = canvas.height * ratio;
                         
-                        // 添加背景頁面
                         pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
                         
-                        // 添加該頁面的圖片
                         if (this.pageAssignments[pageNum]) {
                             await this.addImageToPDF(pdf, pageNum, ratio);
                         }
@@ -1559,18 +1615,14 @@
                 if (!imageData) return;
 
                 try {
-                    // 計算在PDF中的位置和大小
                     const x = this.fixedPosition.x * ratio;
                     const y = this.fixedPosition.y * ratio;
                     const w = this.fixedPosition.width * ratio;
                     const h = this.fixedPosition.height * ratio;
                     
-                    // 確保圖片URL是有效的
                     if (imageData.url && imageData.url.startsWith('data:')) {
-                        // 直接使用DataURL
                         pdf.addImage(imageData.url, 'JPEG', x, y, w, h);
                     } else {
-                        // 將圖片轉換為canvas再轉為DataURL
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
                         canvas.width = this.fixedPosition.width;
@@ -1594,12 +1646,7 @@
                 }
             }
 
-            // Removed all QR scanner related functions
-            // async startQRScanner() { /* ... */ }
-            // stopQRScanner() { /* ... */ }
-
             updateStep(step) {
-                // 更新流程步驟顯示
                 document.querySelectorAll('.step').forEach((el, index) => {
                     el.classList.toggle('active', index + 1 <= step);
                 });
@@ -1616,7 +1663,6 @@
                 document.getElementById('previewAll').disabled = !hasAssignments;
                 document.getElementById('downloadPDF').disabled = !hasAssignments;
                 
-                // 更新按鈕文字
                 if (this.positionLocked) {
                     document.getElementById('lockPosition').innerHTML = '✅ 位置已鎖定';
                 }
@@ -1641,7 +1687,6 @@
             }
         }
 
-        // 初始化應用程式
         let pdfEditor;
         document.addEventListener('DOMContentLoaded', () => {
             pdfEditor = new PDFBatchEditor();
